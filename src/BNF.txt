@@ -1,0 +1,46 @@
+Constructs:
+- unit null
+- real numbers
+- strings
+- coordinates
+- blocks (city, road, building, stadium, arena, field)
+- commands (line, bend, box, circle)
+
+
+CITY ::= city NAME BLOCK
+BLOCK ::= { NAMED_BLOCK NAME { COMMANDS }; }
+NAMED_BLOCK ::= road | building | stadium | arena | field
+COMMANDS ::= COMMAND COMMANDS | ε
+COMMAND ::= line(POINT, POINT)
+            | bend(POINT, POINT, ANGLE)
+            | box(POINT, POINT)
+            | circle(POINT, RADIUS)
+POINT ::= (REAL, REAL)
+ANGLE ::= REAL
+RADIUS ::= REAL
+
+FOR ::= for ( STRING in REAL : REAL ) { STATEMENTS }
+STATEMENTS ::= STATEMENT STATEMENTS | ε
+STATEMENT ::= ASSIGNMENT | FOR | IF | CALL
+
+IF ::= if ( CONDITION ) { STATEMENTS }
+CONDITION ::= EXPRESSION COMP_OP EXPRESSION
+COMP_OP ::= == | != | < | > | <= | >=
+
+PROCEDURE ::= def STRING ( PARAMETERS ) { STATEMENTS }
+PARAMETERS ::= STRING , PARAMETERS | ε
+
+CALL ::= STRING ( EXPRESSIONS )
+EXPRESSIONS ::= EXPRESSION , EXPRESSIONS | ε
+EXPRESSION ::= REAL | STRING | LIST | CALL | OPERATION
+OPERATION ::= EXPRESSION OPERATOR EXPRESSION
+OPERATOR ::= + | - | * | / | %
+
+LIST ::= STRING [ LIST_VALUES ]
+LIST_VALUES ::= EXPRESSION , LIST_VALUES | ε
+
+ASSIGNMENT ::= STRING = EXPRESSION
+
+NAME ::= "STRING"
+REAL ::= [0-9]+(\.[0-9]+)?
+STRING ::= [a-zA-Z]+
