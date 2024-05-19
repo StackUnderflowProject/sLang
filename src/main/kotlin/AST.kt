@@ -137,35 +137,3 @@ class Variable(val name: String) : IExpression {
         return name
     }
 }
-
-fun main() {
-    println(
-        City(
-            name = "Maribor",
-            block = Stadium(
-                name = "Ljudski vrt",
-                command = Box(
-                    start = Point(Real(0.0), Real(0.0)),
-                    end = Point(Real(100.0), Real(0.0)),
-                    nextCommand = Circle(
-                        center = Point(Real(100.0), Real(0.0)),
-                        radius = Real(100.0),
-                    )
-                ),
-                nextBlock = Arena(
-                    name = "Tabor",
-                    command = Line(
-                        start = Point(Real(0.0), Real(0.0)),
-                        end = Point(Real(100.0), Real(100.0)),
-                        nextCommand = Bend(
-                            start = Point(Real(100.0), Real(100.0)),
-                            end = Point(Real(0.0), Real(0.0)),
-                            angle = Real(90.0)
-                        )
-                    ),
-                    nextBlock = Nil()
-                )
-            )
-        )
-    )
-}
