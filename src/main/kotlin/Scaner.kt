@@ -1,5 +1,3 @@
-package task
-
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -44,7 +42,8 @@ enum class Symbol {
     MORE_OR_EQUALS,
     DEF,
     OPEN_BRACKET,
-    CLOSE_BRACKET
+    CLOSE_BRACKET,
+    NIL
 }
 
 const val EOF = -1
@@ -60,7 +59,7 @@ interface DFA {
 }
 
 object Automaton : DFA {
-    override val states = (1..88).toSet()
+    override val states = (1..91).toSet()
     override val alphabet = 0..255
     override val startState = 1
 
@@ -68,7 +67,7 @@ object Automaton : DFA {
         .plus(31..32)
         .plus(33..36)
         .plus(39..77)
-        .plus(79..88).toSet()
+        .plus(79..91).toSet()
 
     private val numberOfStates = states.max() + 1 // plus the task.ERROR_STATE
     private val numberOfCodes = alphabet.max() + 1 // plus the task.EOF
@@ -83,7 +82,8 @@ object Automaton : DFA {
 
     private fun setTransition(from: Int, set: Set<Char>, to: Int) {
         set.forEach {
-            setTransition(from, it, to)
+            if(this.transitions[from][it.code + 1] == 0)
+                setTransition(from, it, to)
         }
     }
 
@@ -116,7 +116,7 @@ object Automaton : DFA {
     private val digits = '0'..'9'
     private val chars = ('a'..'z').plus('A'..'Z').toSet()
     private val skip = setOf(' ', '\t', '\n', '\r')
-    private val keywordFirst = setOf('v', 'f', 'p', 'c', 'r', 'b', 's', 'a', 'l', 'd')
+    private val keywordFirst = setOf('v', 'f', 'p', 'c', 'r', 'b', 's', 'a', 'l', 'd', 'n')
 
     private fun setVariable(from: Int, to: Int){
         for(i in from..to) {
@@ -125,6 +125,92 @@ object Automaton : DFA {
     }
 
     init {
+        // var
+        setTransition(1, 'v', 2)
+        selectedTransition(2, 'a', 3)
+        selectedTransition(3, 'r', 4)
+
+        // variable
+        setTransition(1, chars.minus(keywordFirst), 5)
+        setTransition(4, chars, 5)
+        setTransition(4, digits, 6)
+        setTransition(5, chars, 5)
+        setTransition(5, digits, 6)
+
+        // for
+        setTransition(1, 'f', 7)
+        selectedTransition(7, 'o', 8)
+        selectedTransition(8, 'r', 9)
+
+        setTransition(9, chars, 5)
+        setTransition(9, digits, 6)
+
+        // print
+        setTransition(1, 'p', 10)
+        selectedTransition(10, 'r', 11)
+        selectedTransition(11, 'i', 12)
+        selectedTransition(12, 'n', 13)
+        selectedTransition(13, 't', 14)
+
+        setTransition(14, chars, 5)
+        setTransition(14, digits, 6)
+        
+        // plus
+        setTransition(1, '+', 15)
+
+        // minus
+        setTransition(1, '-', 16)
+
+        // times
+        setTransition(1, '*', 17)
+
+        // divides
+        setTransition(1, '/', 18)
+
+        // integer-divides
+        setTransition(18, '/', 19)
+
+        // pow
+        setTransition(1, '^', 20)
+
+        // lparan
+        setTransition(1, '(', 21)
+
+        // rparan
+        setTransition(1, ')', 22)
+        
+        // skip
+        setTransition(1, skip, 23)
+        setTransition(23, skip, 23)
+        
+        // assign
+        setTransition(1, '=', 24)
+
+        // term
+        setTransition(1, ';', 25)
+        
+        // to
+        setTransition(1, ',', 26)
+        
+        // begin
+        setTransition(1, '{', 27)
+        
+        // end
+        setTransition(1, '}', 28)
+
+        // equals
+
+
+        // real
+        setTransition(1, digits, 29)
+        setTransition(29, digits, 29)
+        setTransition(29, '.', 30)
+        setTransition(30, digits, 31)
+        setTransition(31, digits, 31)
+
+        // eof
+        setTransition(1, EOF, 32)
+
         // city
         setTransition(1, 'c', 33)
         selectedTransition(33, 'i', 34)
@@ -134,6 +220,7 @@ object Automaton : DFA {
         // name
         setTransition(1, '\"', 37)
         setTransition(37, chars, 38)
+        setTransition(38, ' ', 38)
         setTransition(38, chars, 38)
         setTransition(38, '\"', 39)
 
@@ -221,91 +308,10 @@ object Automaton : DFA {
         // close bracket
         setTransition(1, ']', 88)
 
-        // var
-        setTransition(1, 'v', 2)
-        selectedTransition(2, 'a', 3)
-        selectedTransition(3, 'r', 4)
-
-        // variable
-        setTransition(1, chars.minus(keywordFirst), 5)
-        setTransition(4, chars, 5)
-        setTransition(4, digits, 6)
-        setTransition(5, chars, 5)
-        setTransition(5, digits, 6)
-
-        // for
-        setTransition(1, 'f', 7)
-        selectedTransition(7, 'o', 8)
-        selectedTransition(8, 'r', 9)
-
-        setTransition(9, chars, 5)
-        setTransition(9, digits, 6)
-
-        // print
-        setTransition(1, 'p', 10)
-        selectedTransition(10, 'r', 11)
-        selectedTransition(11, 'i', 12)
-        selectedTransition(12, 'n', 13)
-        selectedTransition(13, 't', 14)
-
-        setTransition(14, chars, 5)
-        setTransition(14, digits, 6)
-        
-        // plus
-        setTransition(1, '+', 15)
-
-        // minus
-        setTransition(1, '-', 16)
-
-        // times
-        setTransition(1, '*', 17)
-
-        // divides
-        setTransition(1, '/', 18)
-
-        // integer-divides
-        setTransition(18, '/', 19)
-
-        // pow
-        setTransition(1, '^', 20)
-
-        // lparan
-        setTransition(1, '(', 21)
-
-        // rparan
-        setTransition(1, ')', 22)
-        
-        // skip
-        setTransition(1, skip, 23)
-        setTransition(23, skip, 23)
-        
-        // assign
-        setTransition(1, '=', 24)
-
-        // term
-        setTransition(1, ';', 25)
-        
-        // to
-        setTransition(1, ',', 26)
-        
-        // begin
-        setTransition(1, '{', 27)
-        
-        // end
-        setTransition(1, '}', 28)
-
-        // equals
-
-
-        // real
-        setTransition(1, digits, 29)
-        setTransition(29, digits, 29)
-        setTransition(29, '.', 30)
-        setTransition(30, digits, 31)
-        setTransition(31, digits, 31)
-
-        // eof
-        setTransition(1, EOF, 32)
+        // nil
+        setTransition(1, 'n', 89)
+        selectedTransition(89, 'i', 90)
+        selectedTransition(90, 'l', 91)
 
         setVariable(2,3)
         setSymbol(4, Symbol.DEFINE)
@@ -380,6 +386,9 @@ object Automaton : DFA {
         setSymbol(87, Symbol.OPEN_BRACKET)
 
         setSymbol(88, Symbol.CLOSE_BRACKET)
+
+        setVariable(89, 90)
+        setSymbol(91, Symbol.NIL)
     }
 }
 
@@ -472,6 +481,7 @@ fun name(symbol: Symbol) =
         Symbol.DEF -> "def"
         Symbol.OPEN_BRACKET -> "open_bracket"
         Symbol.CLOSE_BRACKET -> "close_bracket"
+        Symbol.NIL -> "nil"
     }
 
 fun printTokens(scanner: Scanner, output: OutputStream) {
@@ -484,9 +494,4 @@ fun printTokens(scanner: Scanner, output: OutputStream) {
     }
     writer.appendLine()
     writer.flush()
-}
-
-
-fun main(args: Array<String>) {
-    printTokens(Scanner(Automaton, "city \"Maribor\" { stadium { box((1.0, 1.0), (2.0, 2.0)) }; }".byteInputStream()), System.out)
 }

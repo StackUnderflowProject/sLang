@@ -1,0 +1,20 @@
+Mandatory features:
+FIRST(CITY) = { city }
+FIRST(BLOCKS) = FIRST(BLOCK) U { ε } = { road, building, stadium, arena }
+FIRST(BLOCK) = FIRST(NAMED_BLOCK) = { road, building, stadium, arena }
+FIRST(NAMED_BLOCK) = { road, building, stadium, arena }
+FIRST(COMMANDS) = FIRST(FIRST(COMMAND) . FIRST(COMMANDS)) U { ε } = { line, bend, box, circle, ε }
+FIRST(COMMAND) = { line, bend, box, circle }
+FIRST(POINT) = { ( }
+
+Additional features:
+FIRST(FOR) = { for }
+FIRST(STATEMENTS) = FIRST(FIRST(STATEMENT) . FIRST(STATEMENTS)) U { ε } = { for, var, if, variable, ε }
+FIRST(STATEMENT) = FIRST(ASSIGMENT) U FIRST(FOR) U FIRST(IF) U FIRST(CALL) = { for, var, if, variable }
+FIRST(ASSIGMENT) = { var }
+FIRST(IF) = { if }
+FIRST(CALL) = { variable }
+FIRST(CONDITION) = FIRST(EXPRESSION) =
+FIRST(EXPRESSION) = { real, variable } U FIRST(LIST) U FIRST(CALL) U FIRST(OPERATION) =
+FIRST(LIST) = { [ }
+FIRST(OPERATION) = FIRST(EXPRESSION) = { real, variable }

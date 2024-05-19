@@ -7,19 +7,18 @@ Constructs:
 - commands (line, bend, box, circle)
 
 
-CITY ::= city NAME BLOCK
-BLOCK ::= { NAMED_BLOCK NAME { COMMANDS }; }
-NAMED_BLOCK ::= road | building | stadium | arena | field
+CITY ::= city NAME { BLOCKS }
+BLOCKS ::= BLOCK BLOCKS | ε
+BLOCK ::= NAMED_BLOCK NAME { COMMANDS };
+NAMED_BLOCK ::= road | building | stadium | arena
 COMMANDS ::= COMMAND COMMANDS | ε
 COMMAND ::= line(POINT, POINT)
-            | bend(POINT, POINT, ANGLE)
+            | bend(POINT, POINT, real)
             | box(POINT, POINT)
-            | circle(POINT, RADIUS)
-POINT ::= (REAL, REAL)
-ANGLE ::= REAL
-RADIUS ::= REAL
+            | circle(POINT, real)
+POINT ::= (real, real)
 
-FOR ::= for ( var VARIABLE = REAL, REAL ) { STATEMENTS }
+FOR ::= for ( var variable = real, real ) { STATEMENTS }
 STATEMENTS ::= STATEMENT STATEMENTS | ε
 STATEMENT ::= ASSIGNMENT | FOR | IF | CALL
 
@@ -27,19 +26,19 @@ IF ::= if ( CONDITION ) { STATEMENTS }
 CONDITION ::= EXPRESSION COMP_OP EXPRESSION
 COMP_OP ::= == | != | < | > | <= | >=
 
-PROCEDURE ::= def VARIABLE ( PARAMETERS ) { STATEMENTS }
-PARAMETERS ::= VARIABLE , PARAMETERS | ε
+PROCEDURE ::= def variable ( PARAMETERS ) { STATEMENTS }
+PARAMETERS ::= variable , PARAMETERS | ε
 
-CALL ::= STRING ( EXPRESSIONS )
+CALL ::= variable ( EXPRESSIONS )
 EXPRESSIONS ::= EXPRESSION , EXPRESSIONS | ε
-EXPRESSION ::= REAL | VARIABLE | LIST | CALL | OPERATION
+EXPRESSION ::= real | variable | LIST | CALL | OPERATION
 OPERATION ::= EXPRESSION OPERATOR EXPRESSION
 OPERATOR ::= + | - | * | / | %
 
 LIST ::= [ LIST_VALUES ]
 LIST_VALUES ::= EXPRESSION , LIST_VALUES | ε
 
-ASSIGNMENT ::= var VARIABLE = EXPRESSION
+ASSIGNMENT ::= var variable = EXPRESSION
 
 NAME ::= \"[\w\s]+\"
 REAL ::= [0-9]+(\.[0-9]+)?
