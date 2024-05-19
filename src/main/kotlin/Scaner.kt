@@ -82,7 +82,7 @@ object Automaton : DFA {
 
     private fun setTransition(from: Int, set: Set<Char>, to: Int) {
         set.forEach {
-            if(this.transitions[from][it.code + 1] == 0)
+            if(transitions[from][it.code + 1] == 0)
                 setTransition(from, it, to)
         }
     }
