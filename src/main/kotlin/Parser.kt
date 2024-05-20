@@ -1,3 +1,5 @@
+import java.io.File
+
 class Parser(private val scanner: Scanner) {
     private var currentToken: Token? = null
 
@@ -24,15 +26,15 @@ class Parser(private val scanner: Scanner) {
         return City(name, block)
     }
 
-    private fun parseName(): String {
-        val name = currentToken?.lexeme
+    private fun parseName(): Name {
+        val name = Name(currentToken?.lexeme ?: "")
         expect(Symbol.NAME)
-        return name!!
+        return name
     }
 
     private fun parseBlocks(): IBlock {
         if(currentToken?.symbol == Symbol.END) {
-            return Nil()
+            return Nil
         }
         val block = parseBlock()
         return if (currentToken?.symbol == Symbol.END) {
@@ -59,7 +61,7 @@ class Parser(private val scanner: Scanner) {
             is Building -> Building(first.name, first.command, second)
             is Stadium -> Stadium(first.name, first.command, second)
             is Arena -> Arena(first.name, first.command, second)
-            else -> Nil()
+            else -> Nil
         }
     }
 
@@ -119,6 +121,7 @@ class Parser(private val scanner: Scanner) {
             Symbol.CIRCLE -> parseCircle()
             Symbol.BOX -> parseBox()
             Symbol.BEND -> parseBend()
+            Symbol.RECT -> parseRect()
             else -> throw IllegalArgumentException("Expected command, but got ${currentToken?.symbol}")
         }
     }
@@ -129,7 +132,8 @@ class Parser(private val scanner: Scanner) {
             is Box -> Box(first.start, first.end, second)
             is Circle -> Circle(first.center, first.radius, second)
             is Bend -> Bend(first.start, first.end, first.angle, second)
-            else -> Nil()
+            is Rect -> Rect(first.bottomLeft, first.bottomRight, first.topRight, first.topLeft, second)
+            else -> Nil
         }
     }
 
@@ -175,6 +179,20 @@ class Parser(private val scanner: Scanner) {
         return Bend(from, to, angle)
     }
 
+    private fun parseRect(): ICommand {
+        expect(Symbol.RECT)
+        expect(Symbol.LPAREN)
+        val bottomLeft = parsePoint()
+        expect(Symbol.TO)
+        val bottomRight = parsePoint()
+        expect(Symbol.TO)
+        val topRight = parsePoint()
+        expect(Symbol.TO)
+        val topLeft = parsePoint()
+        expect(Symbol.RPAREN)
+        return Rect(bottomLeft, bottomRight, topRight, topLeft)
+    }
+
     private fun parsePoint(): Point {
         expect(Symbol.LPAREN)
         val x = parseReal()
@@ -193,19 +211,5 @@ class Parser(private val scanner: Scanner) {
 
 
 fun main() {
-    val result = Parser(
-        Scanner(Automaton,"""
-            city "Maribor" {
-                stadium "Ljudski vrt" {
-                    box((0, 0), (10.5, 10.5))
-                    line((10.5, 10.5), (20, 20))
-                };
-                road "Ulica heroja Staneta" {
-                    line((0, 0), (10, 10))
-                    line((10, 10), (20, 20))
-                };
-            }
-        """.trimIndent().byteInputStream())
-    ).parse()
-    println(result)
+    println(Parser(Scanner(Automaton, File("src/test.txt").inputStream())).parse().eval(emptyMap()))
 }

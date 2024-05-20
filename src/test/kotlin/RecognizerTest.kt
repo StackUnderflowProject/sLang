@@ -32,8 +32,7 @@ class RecognizerTest {
             """
                 city "Maribor" {
                     stadium "Ljudski vrt" {
-                        box ((1, 1), (2, 2))
-                        box ((0.5, 0.5), (2.5, 2.5))
+                        rect((0, 0), (1,0), (1,1), (0,1))
                     };
                     arena "Tabor" {
                         circle ((1, 1), 2)

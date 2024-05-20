@@ -87,6 +87,14 @@ class Recognizer(private val scanner: Scanner) {
                         && recognizeTerminal(Symbol.REAL) && recognizeTerminal(Symbol.RPAREN)
                         && recognizeCommands()
             }
+            Symbol.RECT -> {
+                recognizeTerminal(Symbol.RECT) && recognizeTerminal(Symbol.LPAREN)
+                        && recognizePoint() && recognizeTerminal(Symbol.TO)
+                        && recognizePoint() && recognizeTerminal(Symbol.TO)
+                        && recognizePoint() && recognizeTerminal(Symbol.TO)
+                        && recognizePoint() && recognizeTerminal(Symbol.RPAREN)
+                        && recognizeCommands()
+            }
             Symbol.END -> true
             else -> false
         }
@@ -101,4 +109,9 @@ class Recognizer(private val scanner: Scanner) {
             else -> false
         }
     }
+}
+
+fun main() {
+    println(Recognizer(Scanner(Automaton, ("" +
+            "rect((0, 0), (1,0), (1,1), (0,1))").byteInputStream())).recognizeStart())
 }

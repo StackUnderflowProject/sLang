@@ -16,6 +16,7 @@ COMMAND ::= line(POINT, POINT)
             | bend(POINT, POINT, real)
             | box(POINT, POINT)
             | circle(POINT, real)
+            | rect(POINT, POINT, POINT, POINT)
 POINT ::= (real, real)
 
 FOR ::= for ( var variable = real, real ) { STATEMENTS }

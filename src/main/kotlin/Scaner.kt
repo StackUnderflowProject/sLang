@@ -33,6 +33,7 @@ enum class Symbol {
     LINE,
     BEND,
     BOX,
+    RECT,
     CIRCLE,
     EQUALS,
     NOT_EQUALS,
@@ -59,7 +60,7 @@ interface DFA {
 }
 
 object Automaton : DFA {
-    override val states = (1..91).toSet()
+    override val states = (1..94).toSet()
     override val alphabet = 0..255
     override val startState = 1
 
@@ -67,7 +68,7 @@ object Automaton : DFA {
         .plus(31..32)
         .plus(33..36)
         .plus(39..77)
-        .plus(79..91).toSet()
+        .plus(79..94).toSet()
 
     private val numberOfStates = states.max() + 1 // plus the task.ERROR_STATE
     private val numberOfCodes = alphabet.max() + 1 // plus the task.EOF
@@ -278,6 +279,8 @@ object Automaton : DFA {
         selectedTransition(74, 'l', 75)
         selectedTransition(75, 'e', 76)
 
+
+
         // equals
         setTransition(24, '=', 77)
 
@@ -312,6 +315,12 @@ object Automaton : DFA {
         setTransition(1, 'n', 89)
         selectedTransition(89, 'i', 90)
         selectedTransition(90, 'l', 91)
+
+        // rect
+        // setTransition(1, 'r', 40)
+        selectedTransition(40, 'e', 92)
+        selectedTransition(92, 'c', 93)
+        selectedTransition(93, 't', 94)
 
         setVariable(2,3)
         setSymbol(4, Symbol.DEFINE)
@@ -389,6 +398,9 @@ object Automaton : DFA {
 
         setVariable(89, 90)
         setSymbol(91, Symbol.NIL)
+
+        setVariable(92, 93)
+        setSymbol(94, Symbol.RECT)
     }
 }
 
@@ -482,6 +494,7 @@ fun name(symbol: Symbol) =
         Symbol.OPEN_BRACKET -> "open_bracket"
         Symbol.CLOSE_BRACKET -> "close_bracket"
         Symbol.NIL -> "nil"
+        Symbol.RECT -> "rect"
     }
 
 fun printTokens(scanner: Scanner, output: OutputStream) {
