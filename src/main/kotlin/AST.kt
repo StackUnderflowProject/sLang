@@ -314,20 +314,3 @@ fun getMultipleGeometryEnd(nextCommand: ICommand): String {
         }
         """.trimIndent()
 }
-
-fun main() {
-    println(
-        City(
-            Name("\"Maribor\""),
-            Stadium(
-                Name("\"Ljudski vrt\""),
-                Rect(
-                    Point(Real(0.0), Real(0.0)),
-                    Point(Real(1.0), Real(0.0)),
-                    Point(Real(1.0), Real(1.0)),
-                    Point(Real(0.0), Real(1.0))
-                )
-            ),
-        ).eval(emptyMap())
-    )
-}
