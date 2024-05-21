@@ -211,5 +211,6 @@ class Parser(private val scanner: Scanner) {
 
 
 fun main() {
-    println(Parser(Scanner(Automaton, File("src/test.txt").inputStream())).parse().eval(emptyMap()))
+    val geojson = Parser(Scanner(Automaton, File("src/test.txt").inputStream())).parse().eval(emptyMap())
+    File("src/test.json").writeText(geojson)
 }

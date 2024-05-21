@@ -1,3 +1,8 @@
+import kotlin.math.asin
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+
 interface ICity {
     val name: Name
     override fun toString(): String
@@ -121,8 +126,8 @@ $nextCommand
         {
             "type": "LineString",
             "coordinates": [
-                [${start.lng.eval(env)}, ${start.lat.eval(env)}],
-                [${end.lng.eval(env)}, ${end.lat.eval(env)}]
+                [${start.lon.eval(env)}, ${start.lat.eval(env)}],
+                [${end.lon.eval(env)}, ${end.lat.eval(env)}]
             ]
         }
         """
@@ -146,17 +151,14 @@ $nextCommand
     }
 
     override fun eval(env: Map<Variable, IExpression>): String {
+        val bendPoints = getBendPoints(start, end, angle)
         // Note: GeoJSON does not support 'Bend', but we can represent it as a LineString with additional properties
         val bendGeoJson = """
             {
                 "type": "LineString",
                 "coordinates": [
-                    [${start.lng.eval(env)}, ${start.lat.eval(env)}],
-                    [${end.lng.eval(env)}, ${end.lat.eval(env)}]
-                ],
-                "properties": {
-                    "bend_angle": ${angle.eval(env)}
-                }
+                    ${bendPoints.joinToString(",\n") { it.eval(env)}}   
+                ]
             }
         """
         return if (nextCommand is Nil) bendGeoJson.trimIndent() else bendGeoJson.trimIndent() + ",\n" + nextCommand.eval(
@@ -182,11 +184,11 @@ $nextCommand
             {
                 "type": "Polygon",
                 "coordinates": [[
-                    [${start.lng.eval(env)}, ${start.lat.eval(env)}],
-                    [${end.lng.eval(env)}, ${start.lat.eval(env)}],
-                    [${end.lng.eval(env)}, ${end.lat.eval(env)}],
-                    [${start.lng.eval(env)}, ${end.lat.eval(env)}],
-                    [${start.lng.eval(env)}, ${start.lat.eval(env)}]
+                    [${start.lon.eval(env)}, ${start.lat.eval(env)}],
+                    [${end.lon.eval(env)}, ${start.lat.eval(env)}],
+                    [${end.lon.eval(env)}, ${end.lat.eval(env)}],
+                    [${start.lon.eval(env)}, ${end.lat.eval(env)}],
+                    [${start.lon.eval(env)}, ${start.lat.eval(env)}]
                 ]]
             }
         """
@@ -210,13 +212,13 @@ $nextCommand
 
     override fun eval(env: Map<Variable, IExpression>): String {
         // TODO: Implement circle drawing
+        val circlePoints = getCirclePoints(center, radius)
         val circleGeoJson = """
         {
-            "type": "Point",
+            "type": "LineString",
             "coordinates": [
-                ${center.lng.eval(env)}, 
-                ${center.lat.eval(env)}
-            ],       
+                ${circlePoints.joinToString(",\n") { it.eval(env) }}
+            ]
         }
         """
         return if (nextCommand is Nil) circleGeoJson.trimIndent() else circleGeoJson.trimIndent() + ",\n" + nextCommand.eval(
@@ -244,11 +246,11 @@ $nextCommand
         {
             "type": "Polygon",
             "coordinates": [[
-                [${bottomLeft.lng.eval(env)}, ${bottomLeft.lat.eval(env)}],
-                [${bottomRight.lng.eval(env)}, ${bottomRight.lat.eval(env)}],
-                [${topRight.lng.eval(env)}, ${topRight.lat.eval(env)}],
-                [${topLeft.lng.eval(env)}, ${topLeft.lat.eval(env)}],
-                [${bottomLeft.lng.eval(env)}, ${bottomLeft.lat.eval(env)}]
+                [${bottomLeft.lon.eval(env)}, ${bottomLeft.lat.eval(env)}],
+                [${bottomRight.lon.eval(env)}, ${bottomRight.lat.eval(env)}],
+                [${topRight.lon.eval(env)}, ${topRight.lat.eval(env)}],
+                [${topLeft.lon.eval(env)}, ${topLeft.lat.eval(env)}],
+                [${bottomLeft.lon.eval(env)}, ${bottomLeft.lat.eval(env)}]
             ]]
         }
         """
@@ -258,15 +260,15 @@ $nextCommand
 }
 
 class Point(
-    val lat: IExpression,
-    val lng: IExpression
+    val lat: Real,
+    val lon: Real
 ) : IExpression {
     override fun toString(): String {
-        return "($lng, $lat)"
+        return "($lon, $lat)"
     }
 
     override fun eval(env: Map<Variable, IExpression>): String {
-        return "[${lng.eval(env)}, ${lat.eval(env)}]"
+        return "[${lon.eval(env)}, ${lat.eval(env)}]"
     }
 }
 
@@ -313,4 +315,52 @@ fun getMultipleGeometryEnd(nextCommand: ICommand): String {
             ]
         }
         """.trimIndent()
+}
+
+fun getCirclePoints(center: Point, radius: Real): List<Point> {
+    val points = mutableListOf<Point>()
+    val lat = Math.toRadians(center.lat.value)
+    val lon = Math.toRadians(center.lon.value)
+    val c = radius.value / 1000 / 6371.0  // Convert radius from meters to kilometers and calculate c
+    for (i in 0..360 step 10) {
+        val beta = Math.toRadians(i.toDouble())
+        val newLat = asin(sin(lat) * cos(c) + cos(lat) * sin(c) * cos(beta))
+        val newLon = lon + atan2(sin(beta) * sin(c) * cos(lat), cos(c) - sin(lat) * sin(newLat))
+        points.add(Point(Real(Math.toDegrees(newLat)), Real(Math.toDegrees(newLon))))
+    }
+    return points
+}
+
+fun getBendPoints(start: Point, end: Point, angle: Real): List<Point> {
+    val points = mutableListOf<Point>()
+    val angleInRad = Math.toRadians(angle.value)
+
+    // Compute the midpoint
+    val midX = (start.lat.value + end.lat.value) / 2
+    val midY = (start.lon.value + end.lon.value) / 2
+
+    // Distance between start and end
+    val distanceX = end.lat.value - start.lat.value
+    val distanceY = end.lon.value - start.lon.value
+
+    // Compute the control point using the angle
+    val controlPoint = Point(
+        Real(midX + (distanceY / 2) * cos(angleInRad) - (distanceX / 2) * sin(angleInRad)),
+        Real(midY + (distanceY / 2) * sin(angleInRad) + (distanceX / 2) * cos(angleInRad))
+    )
+
+    // Compute points on the quadratic Bezier curve
+    for (i in 0..100) {
+        val t = i / 100.0
+        val a = (1 - t) * (1 - t)
+        val b = 2 * (1 - t) * t
+        val c = t * t
+
+        val x = a * start.lat.value + b * controlPoint.lat.value + c * end.lat.value
+        val y = a * start.lon.value + b * controlPoint.lon.value + c * end.lon.value
+
+        points.add(Point(Real(x), Real(y)))
+    }
+
+    return points
 }
