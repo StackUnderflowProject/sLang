@@ -117,6 +117,7 @@ class Parser(private val scanner: Scanner) {
 
     private fun parseCommand(): ICommand {
         return when (currentToken?.symbol) {
+            Symbol.FOR -> parseForLoop()
             Symbol.DEFINE -> parseVariableAssigment()
             Symbol.LINE -> parseLine()
             Symbol.CIRCLE -> parseCircle()
@@ -135,8 +136,25 @@ class Parser(private val scanner: Scanner) {
             is Bend -> Bend(first.start, first.end, first.angle, second)
             is Rect -> Rect(first.bottomLeft, first.bottomRight, first.topRight, first.topLeft, second)
             is Define -> Define(first.name, first.value, second)
+            is ForLoop -> ForLoop(first.variable, first.start, first.end, first.body, second)
             else -> Nil
         }
+    }
+
+    private fun parseForLoop(): ICommand {
+        expect(Symbol.FOR)
+        expect(Symbol.LPAREN)
+        expect(Symbol.DEFINE)
+        val variableName = parseVariable()
+        expect(Symbol.ASSIGN)
+        val start = parseAdditive()
+        expect(Symbol.TO)
+        val end = parseAdditive()
+        expect(Symbol.RPAREN)
+        expect(Symbol.BEGIN)
+        val body = parseCommands()
+        expect(Symbol.END)
+        return combineCommands(Define(variableName, start), ForLoop(Variable(variableName), start, end, body))
     }
 
     private fun parseVariableAssigment(): ICommand {
@@ -154,22 +172,22 @@ class Parser(private val scanner: Scanner) {
         return variable
     }
 
-    private fun parseExpression(): Expr {
-        return when (currentToken?.symbol) {
-            Symbol.VARIABLE -> {
-                val variable = parseVariable()
-                Variable(variable)
-            }
-            Symbol.REAL -> parseReal()
-            Symbol.LPAREN -> {
-                expect(Symbol.LPAREN)
-                val expression = parseExpression()
-                expect(Symbol.RPAREN)
-                expression
-            }
-            else -> throw IllegalArgumentException("Expected expression, but got ${currentToken?.symbol}")
-        }
-    }
+//    private fun parseExpression(): Expr {
+//        return when (currentToken?.symbol) {
+//            Symbol.VARIABLE -> {
+//                val variable = parseVariable()
+//                Variable(variable)
+//            }
+//            Symbol.REAL -> parseReal()
+//            Symbol.LPAREN -> {
+//                expect(Symbol.LPAREN)
+//                val expression = parseExpression()
+//                expect(Symbol.RPAREN)
+//                expression
+//            }
+//            else -> throw IllegalArgumentException("Expected expression, but got ${currentToken?.symbol}")
+//        }
+//    }
 
     private fun parseLine(): ICommand {
         expect(Symbol.LINE)
@@ -186,9 +204,9 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.LPAREN)
         val center = parsePoint()
         expect(Symbol.TO)
-        val radius = parseReal()
+        val radius = parseAdditive()
         expect(Symbol.RPAREN)
-        return Circle(center, radius)
+        return Circle(center, radius as Real)
     }
 
     private fun parseBox(): ICommand {
@@ -208,9 +226,9 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.TO)
         val to = parsePoint()
         expect(Symbol.TO)
-        val angle = parseReal()
+        val angle = parseAdditive()
         expect(Symbol.RPAREN)
-        return Bend(from, to, angle)
+        return Bend(from, to, angle as Real)
     }
 
     private fun parseRect(): ICommand {
@@ -229,18 +247,18 @@ class Parser(private val scanner: Scanner) {
 
     private fun parsePoint(): Point {
         expect(Symbol.LPAREN)
-        val x = parseExpression()
+        val x = parseAdditive()
         expect(Symbol.TO)
-        val y = parseExpression()
+        val y = parseAdditive()
         expect(Symbol.RPAREN)
         return Point(x, y)
     }
 
-    private fun parseReal(): Real {
-        val real = currentToken?.lexeme?.toDouble()?.let { Real(it) }
-        expect(Symbol.REAL)
-        return real!!
-    }
+//    private fun parseReal(): Real {
+//        val real = currentToken?.lexeme?.toDouble()?.let { Real(it) }
+//        expect(Symbol.REAL)
+//        return real!!
+//    }
 
     private fun parseAdditive(): Expr {
         var left = parseMultiplicative()
