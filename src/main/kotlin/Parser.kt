@@ -117,6 +117,7 @@ class Parser(private val scanner: Scanner) {
 
     private fun parseCommand(): ICommand {
         return when (currentToken?.symbol) {
+            Symbol.DEFINE -> parseVariableAssigment()
             Symbol.LINE -> parseLine()
             Symbol.CIRCLE -> parseCircle()
             Symbol.BOX -> parseBox()
@@ -133,7 +134,40 @@ class Parser(private val scanner: Scanner) {
             is Circle -> Circle(first.center, first.radius, second)
             is Bend -> Bend(first.start, first.end, first.angle, second)
             is Rect -> Rect(first.bottomLeft, first.bottomRight, first.topRight, first.topLeft, second)
+            is Define -> Define(first.name, first.value, second)
             else -> Nil
+        }
+    }
+
+    private fun parseVariableAssigment(): ICommand {
+        expect(Symbol.DEFINE)
+        val variable = parseVariable()
+        expect(Symbol.ASSIGN)
+        val expression = parseAdditive()
+        expect(Symbol.TERM)
+        return Define(variable, expression)
+    }
+
+    private fun parseVariable(): String {
+        val variable = currentToken?.lexeme ?: ""
+        expect(Symbol.VARIABLE)
+        return variable
+    }
+
+    private fun parseExpression(): Expr {
+        return when (currentToken?.symbol) {
+            Symbol.VARIABLE -> {
+                val variable = parseVariable()
+                Variable(variable)
+            }
+            Symbol.REAL -> parseReal()
+            Symbol.LPAREN -> {
+                expect(Symbol.LPAREN)
+                val expression = parseExpression()
+                expect(Symbol.RPAREN)
+                expression
+            }
+            else -> throw IllegalArgumentException("Expected expression, but got ${currentToken?.symbol}")
         }
     }
 
@@ -195,9 +229,9 @@ class Parser(private val scanner: Scanner) {
 
     private fun parsePoint(): Point {
         expect(Symbol.LPAREN)
-        val x = parseReal()
+        val x = parseExpression()
         expect(Symbol.TO)
-        val y = parseReal()
+        val y = parseExpression()
         expect(Symbol.RPAREN)
         return Point(x, y)
     }
@@ -207,7 +241,97 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.REAL)
         return real!!
     }
+
+    private fun parseAdditive(): Expr {
+        var left = parseMultiplicative()
+        while (currentToken?.symbol in setOf(Symbol.PLUS, Symbol.MINUS)) {
+            val operator = currentToken!!.symbol
+            currentToken = scanner.getToken() // Consume the operator token
+            val right = parseMultiplicative()
+            left = when (operator) {
+                Symbol.PLUS -> Plus(left, right)
+                Symbol.MINUS -> Minus(left, right)
+                else -> throw IllegalArgumentException("Unexpected operator: $operator")
+            }
+        }
+        return left
+    }
+
+    private fun parseMultiplicative(): Expr {
+        var left = parseExponential()
+        while (currentToken?.symbol in setOf(Symbol.TIMES, Symbol.DIVIDES, Symbol.INTEGER_DIVIDES)) {
+            val operator = currentToken!!.symbol
+            currentToken = scanner.getToken() // Consume the operator token
+            val right = parseExponential()
+            left = when (operator) {
+                Symbol.TIMES -> Times(left, right)
+                Symbol.DIVIDES -> Divides(left, right)
+                Symbol.INTEGER_DIVIDES -> IntegerDivides(left, right)
+                else -> throw IllegalArgumentException("Unexpected operator: $operator")
+            }
+        }
+        return left
+    }
+
+    private fun parseExponential(): Expr {
+        var left = parseUnary()
+        while (currentToken?.symbol == Symbol.POW) {
+            currentToken = scanner.getToken() // Consume the POW token
+            val right = parseUnary()
+            left = buildRightAssociativePow(left, right)
+        }
+        return left
+    }
+
+    private fun buildRightAssociativePow(left: Expr, right: Expr): Expr {
+        if (currentToken?.symbol == Symbol.POW) {
+            currentToken = scanner.getToken() // Consume the POW token
+            val nextRight = parseUnary() // Parse the next operand
+            val newLeft = buildRightAssociativePow(right, nextRight)
+            return Pow(left, newLeft)
+        }
+        return Pow(left, right)
+    }
+
+    private fun parseUnary(): Expr {
+        return when (currentToken?.symbol) {
+            Symbol.PLUS -> {
+                currentToken = scanner.getToken() // Consume the PLUS token
+                UnaryPlus(parsePrimary())
+            }
+            Symbol.MINUS -> {
+                currentToken = scanner.getToken() // Consume the MINUS token
+                UnaryMinus(parsePrimary())
+            }
+            else -> parsePrimary()
+        }
+    }
+
+    private fun parsePrimary(): Expr {
+        return when (currentToken?.symbol) {
+            Symbol.REAL -> {
+                val value = currentToken!!.lexeme.toDoubleOrNull()
+                    ?: throw IllegalArgumentException("Invalid real number: ${currentToken?.lexeme}")
+                currentToken = scanner.getToken() // Consume the REAL token
+                Real(value)
+            }
+            Symbol.VARIABLE -> {
+                val name = currentToken!!.lexeme
+                currentToken = scanner.getToken() // Consume the VARIABLE token
+                Variable(name)
+            }
+            Symbol.LPAREN -> {
+                currentToken = scanner.getToken() // Consume the LPAREN token
+                val expr = parseAdditive()
+                expect(Symbol.RPAREN) // Expect RPAREN to close the expression
+                expr
+            }
+            else -> throw IllegalArgumentException("Unexpected token: ${currentToken?.symbol}")
+        }
+    }
 }
+
+
 
 
 fun main() {

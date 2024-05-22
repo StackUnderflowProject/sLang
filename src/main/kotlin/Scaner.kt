@@ -508,3 +508,8 @@ fun printTokens(scanner: Scanner, output: OutputStream) {
     writer.appendLine()
     writer.flush()
 }
+
+fun main() {
+    val scanner = Scanner(Automaton, "var x = 1.0;".byteInputStream())
+    printTokens(scanner, System.out)
+}
