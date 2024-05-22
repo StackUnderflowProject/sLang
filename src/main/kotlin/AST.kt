@@ -24,6 +24,8 @@ interface IExpression {
     fun eval(env: Map<String, Double> = emptyMap()): String
 }
 
+var IS_COLLECTION = false
+
 object Nil : IBlock, ICommand, IExpression, ICity {
     override val nextCommand: ICommand = Nil
     override val name: Name = Name("")
@@ -273,6 +275,43 @@ class Define(
 
 }
 
+class ForLoop(
+    val variable: Variable,
+    val start: Expr,
+    val end: Expr,
+    val body: ICommand,
+    override val nextCommand: ICommand = Nil
+) : ICommand {
+    init {
+        IS_COLLECTION = true;
+    }
+    override fun toString(): String {
+        return """
+for ($variable = $start, $end) {
+    $body
+}
+$nextCommand
+        """.trimIndent()
+    }
+
+    override fun eval(env: Map<String, Double>): String {
+        var commands = ""
+        var i = variable.eval(env)
+        val k = end.eval(env).toInt()
+        if(k - i < 0) {
+            return nextCommand.eval(env)
+        }
+        while(i <= k) {
+            val newEnv = env.toMutableMap()
+            newEnv[variable.toString()] = i
+            commands += body.eval(newEnv) + ",\n"
+            i++
+        }
+        commands = commands.substring(0, commands.length - 2)
+        return commands + nextCommand.eval(env)
+    }
+}
+
 class Point(
     val lat: Expr,
     val lon: Expr
@@ -366,7 +405,6 @@ data class Variable(private val name: String) : Expr {
     }
 }
 
-
 fun isGeometryCollection(command: ICommand): Boolean {
     var geoCommand = 0
     var i = command
@@ -380,7 +418,7 @@ fun isGeometryCollection(command: ICommand): Boolean {
 }
 
 fun getMultipleGeometryStart(command: ICommand): String {
-    return if (isGeometryCollection(command)) """
+    return if (IS_COLLECTION || isGeometryCollection(command)) """
         {
             "type": "GeometryCollection",
             "geometries": [
@@ -388,7 +426,7 @@ fun getMultipleGeometryStart(command: ICommand): String {
 }
 
 fun getMultipleGeometryEnd(command: ICommand): String {
-    return if (isGeometryCollection(command)) """
+    return if (IS_COLLECTION || isGeometryCollection(command)) """
             ]
         }
         """.trimIndent() else ""
