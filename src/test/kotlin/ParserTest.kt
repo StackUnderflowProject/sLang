@@ -61,4 +61,20 @@ class ParserTest {
         // Further assertions to validate the structure of the city
         assertEquals("\"Maribor\"", result.name)
     }
+
+    fun `parse handles variable assign correctly`() {
+        val input = """
+            city "Maribor" {
+                var a = 5;
+                var b = 10;
+                var c = a + b;
+            }
+        """.trimIndent().byteInputStream()
+
+        val parser = Parser(Scanner(Automaton, input))
+        val result = parser.parse()
+
+        // Further assertions to validate the structure of the city
+        assertEquals("\"Maribor\"", result.name)
+    }
 }

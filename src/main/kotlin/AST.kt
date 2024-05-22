@@ -1,30 +1,27 @@
-import kotlin.math.asin
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.math.*
 
 interface ICity {
     val name: Name
     override fun toString(): String
-    fun eval(env: Map<Variable, IExpression>): String
+    fun eval(env: Map<String, Double>): String
 }
 
 interface IBlock {
     val name: Name
     val type: String
     override fun toString(): String
-    fun eval(env: Map<Variable, IExpression>): String
+    fun eval(env: Map<String, Double>): String
 }
 
 interface ICommand {
     val nextCommand: ICommand
     override fun toString(): String
-    fun eval(env: Map<Variable, IExpression>): String
+    fun eval(env: Map<String, Double>): String
 }
 
 interface IExpression {
     override fun toString(): String
-    fun eval(env: Map<Variable, IExpression>): String
+    fun eval(env: Map<String, Double> = emptyMap()): String
 }
 
 object Nil : IBlock, ICommand, IExpression, ICity {
@@ -35,7 +32,7 @@ object Nil : IBlock, ICommand, IExpression, ICity {
         return ""
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
         return ""
     }
 }
@@ -54,7 +51,7 @@ $nextCity
         """
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
         val cityGeoJson = """
         {
             "type": "FeatureCollection",            
@@ -82,7 +79,7 @@ $nextBlock
         """.trimIndent()
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
 
         val blockGeoJson = """
         {
@@ -90,9 +87,9 @@ $nextBlock
             "properties": {
                 "name": "$name"
             },
-            "geometry": ${getMultipleGeometryStart(command.nextCommand)}      
+            "geometry": ${getMultipleGeometryStart(command)}      
                 ${command.eval(env)}
-            ${getMultipleGeometryEnd(command.nextCommand)}
+            ${getMultipleGeometryEnd(command)}
         }
         """
         return if (nextBlock is Nil) blockGeoJson.trimIndent() else blockGeoJson.trimIndent() + ",\n" + nextBlock.eval(
@@ -121,7 +118,7 @@ $nextCommand
         """.trimIndent()
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
         val lineGeoJson = """
         {
             "type": "LineString",
@@ -150,14 +147,14 @@ $nextCommand
         """.trimIndent()
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
         val bendPoints = getBendPoints(start, end, angle)
         // Note: GeoJSON does not support 'Bend', but we can represent it as a LineString with additional properties
         val bendGeoJson = """
             {
                 "type": "LineString",
                 "coordinates": [
-                    ${bendPoints.joinToString(",\n") { it.eval(env)}}   
+                    ${bendPoints.joinToString(",\n") { it.eval(env) }}   
                 ]
             }
         """
@@ -179,7 +176,7 @@ $nextCommand
         """.trimIndent()
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
         val boxGeoJson = """
             {
                 "type": "Polygon",
@@ -210,7 +207,7 @@ $nextCommand
         """.trimIndent()
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
         // TODO: Implement circle drawing
         val circlePoints = getCirclePoints(center, radius)
         val circleGeoJson = """
@@ -241,7 +238,7 @@ $nextCommand
         """.trimIndent()
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
         val boxGeoJson = """
         {
             "type": "Polygon",
@@ -259,68 +256,148 @@ $nextCommand
     }
 }
 
-class Point(
-    val lat: Real,
-    val lon: Real
-) : IExpression {
+class Define(
+    val name: String,
+    val value: Expr,
+    override val nextCommand: ICommand = Nil
+) : ICommand {
     override fun toString(): String {
-        return "($lon, $lat)"
+        return "$name = $value"
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
+    override fun eval(env: Map<String, Double>): String {
+        val newEnv = env.toMutableMap()
+        newEnv[name] = value.eval(env)
+        return nextCommand.eval(newEnv)
+    }
+
+}
+
+class Point(
+    val lat: Expr,
+    val lon: Expr
+) : IExpression {
+
+    override fun toString(): String {
+        return "(${lon}, $lat)"
+    }
+
+    override fun eval(env: Map<String, Double>): String {
         return "[${lon.eval(env)}, ${lat.eval(env)}]"
     }
 }
 
-class Real(val value: Double) : IExpression {
+class Name(private val value: String) : IExpression {
+    override fun toString(): String {
+        return value.trim('\"')
+    }
+
+    override fun eval(env: Map<String, Double>): String {
+        return value.trim('\"')
+    }
+}
+
+interface Expr {
+    fun eval(env: Map<String, Double> = emptyMap()): Double
+}
+
+abstract class BinaryOperation(private val first: Expr, private val second: Expr, private val operator: String) : Expr {
+    override fun toString(): String {
+        return "($first $operator $second)"
+    }
+
+    override fun eval(env: Map<String, Double>): Double {
+        val left = first.eval(env)
+        val right = second.eval(env)
+        return when (operator) {
+            "+" -> left + right
+            "-" -> left - right
+            "*" -> left * right
+            "/" -> left / right
+            "//" -> (left.toInt() / right.toInt()).toDouble()
+            "^" -> left.pow(right)
+            else -> throw IllegalArgumentException("Unknown operator")
+        }
+    }
+}
+
+abstract class UnaryOperation(private val expr: Expr, private val operator: String = "") : Expr {
+    override fun toString(): String {
+        return "($operator$expr)"
+    }
+
+    override fun eval(env: Map<String, Double>): Double {
+        return when (operator) {
+            "+" -> expr.eval(env)
+            "-" -> -expr.eval(env)
+            else -> throw IllegalArgumentException("Unknown operator")
+        }
+    }
+}
+
+data class Plus(val first: Expr, val second: Expr) : BinaryOperation(first, second, "+")
+data class Minus(val first: Expr, val second: Expr) : BinaryOperation(first, second, "-")
+data class Times(val first: Expr, val second: Expr) : BinaryOperation(first, second, "*")
+data class Divides(val first: Expr, val second: Expr) : BinaryOperation(first, second, "/")
+data class IntegerDivides(val first: Expr, val second: Expr) : BinaryOperation(first, second, "//")
+data class Pow(val first: Expr, val second: Expr) : BinaryOperation(first, second, "^")
+
+data class UnaryPlus(val expr: Expr) : UnaryOperation(expr, "+")
+
+data class UnaryMinus(val expr: Expr) : UnaryOperation(expr, "-")
+
+data class Real(val value: Double) : Expr {
     override fun toString(): String {
         return value.toString()
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
-        return value.toString()
+    override fun eval(env: Map<String, Double>): Double {
+        return value
     }
 }
 
-class Variable(val name: String) : IExpression {
+data class Variable(private val name: String) : Expr {
     override fun toString(): String {
         return name
     }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
-        return env[this]?.eval(env) ?: "null"
+    override fun eval(env: Map<String, Double>): Double {
+        return env[name] ?: throw IllegalArgumentException("Variable not found")
     }
 }
 
-class Name(val value: String) : IExpression {
-    override fun toString(): String {
-        return value.trim('\"')
-    }
 
-    override fun eval(env: Map<Variable, IExpression>): String {
-        return value.trim('\"')
+fun isGeometryCollection(command: ICommand): Boolean {
+    var geoCommand = 0
+    var i = command
+    while (i !is Nil) {
+        if (i !is Define) {
+            geoCommand++
+        }
+        i = i.nextCommand
     }
+    return geoCommand > 1
 }
 
-fun getMultipleGeometryStart(nextCommand: ICommand): String {
-    return if (nextCommand is Nil) "" else """
+fun getMultipleGeometryStart(command: ICommand): String {
+    return if (isGeometryCollection(command)) """
         {
             "type": "GeometryCollection",
             "geometries": [
-        """.trimIndent()
+        """.trimIndent() else ""
 }
 
-fun getMultipleGeometryEnd(nextCommand: ICommand): String {
-    return if (nextCommand is Nil) "" else """
+fun getMultipleGeometryEnd(command: ICommand): String {
+    return if (isGeometryCollection(command)) """
             ]
         }
-        """.trimIndent()
+        """.trimIndent() else ""
 }
 
 fun getCirclePoints(center: Point, radius: Real): List<Point> {
     val points = mutableListOf<Point>()
-    val lat = Math.toRadians(center.lat.value)
-    val lon = Math.toRadians(center.lon.value)
+    val lat = Math.toRadians(center.lat.eval())
+    val lon = Math.toRadians(center.lon.eval())
     val c = radius.value / 1000 / 6371.0  // Convert radius from meters to kilometers and calculate c
     for (i in 0..360 step 10) {
         val beta = Math.toRadians(i.toDouble())
@@ -336,12 +413,12 @@ fun getBendPoints(start: Point, end: Point, angle: Real): List<Point> {
     val angleInRad = Math.toRadians(angle.value)
 
     // Compute the midpoint
-    val midX = (start.lat.value + end.lat.value) / 2
-    val midY = (start.lon.value + end.lon.value) / 2
+    val midX = (start.lat.eval() + end.lat.eval()) / 2
+    val midY = (start.lon.eval() + end.lon.eval()) / 2
 
     // Distance between start and end
-    val distanceX = end.lat.value - start.lat.value
-    val distanceY = end.lon.value - start.lon.value
+    val distanceX = end.lat.eval() - start.lat.eval()
+    val distanceY = end.lon.eval() - start.lon.eval()
 
     // Compute the control point using the angle
     val controlPoint = Point(
@@ -349,15 +426,15 @@ fun getBendPoints(start: Point, end: Point, angle: Real): List<Point> {
         Real(midY + (distanceY / 2) * sin(angleInRad) + (distanceX / 2) * cos(angleInRad))
     )
 
-    // Compute points on the quadratic Bezier curve
+    // Compute points on the quadratic Bézier curve
     for (i in 0..100) {
         val t = i / 100.0
         val a = (1 - t) * (1 - t)
         val b = 2 * (1 - t) * t
         val c = t * t
 
-        val x = a * start.lat.value + b * controlPoint.lat.value + c * end.lat.value
-        val y = a * start.lon.value + b * controlPoint.lon.value + c * end.lon.value
+        val x = a * start.lat.eval() + b * controlPoint.lat.eval() + c * end.lat.eval()
+        val y = a * start.lon.eval() + b * controlPoint.lon.eval() + c * end.lon.eval()
 
         points.add(Point(Real(x), Real(y)))
     }
