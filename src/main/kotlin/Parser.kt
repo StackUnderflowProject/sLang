@@ -111,7 +111,7 @@ class Parser(private val scanner: Scanner) {
             command
         } else {
             val nextCommand = parseCommands()
-            combineCommands(command, nextCommand)
+            combineCommands(if(command.nextCommand is Nil) command else command.nextCommand, nextCommand)
         }
     }
 
@@ -136,7 +136,7 @@ class Parser(private val scanner: Scanner) {
             is Bend -> Bend(first.start, first.end, first.angle, second)
             is Rect -> Rect(first.bottomLeft, first.bottomRight, first.topRight, first.topLeft, second)
             is Define -> Define(first.name, first.value, second)
-            is ForLoop -> ForLoop(first.variable, first.start, first.end, first.body, second)
+            is ForLoop -> ForLoop(Define(first.define.name, first.define.value), first.end, first.body, second)
             else -> Nil
         }
     }
@@ -154,7 +154,7 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.BEGIN)
         val body = parseCommands()
         expect(Symbol.END)
-        return combineCommands(Define(variableName, start), ForLoop(Variable(variableName), start, end, body))
+        return ForLoop(Define(variableName, start), end, body)
     }
 
     private fun parseVariableAssigment(): ICommand {
@@ -172,22 +172,6 @@ class Parser(private val scanner: Scanner) {
         return variable
     }
 
-//    private fun parseExpression(): Expr {
-//        return when (currentToken?.symbol) {
-//            Symbol.VARIABLE -> {
-//                val variable = parseVariable()
-//                Variable(variable)
-//            }
-//            Symbol.REAL -> parseReal()
-//            Symbol.LPAREN -> {
-//                expect(Symbol.LPAREN)
-//                val expression = parseExpression()
-//                expect(Symbol.RPAREN)
-//                expression
-//            }
-//            else -> throw IllegalArgumentException("Expected expression, but got ${currentToken?.symbol}")
-//        }
-//    }
 
     private fun parseLine(): ICommand {
         expect(Symbol.LINE)
@@ -253,12 +237,6 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.RPAREN)
         return Point(x, y)
     }
-
-//    private fun parseReal(): Real {
-//        val real = currentToken?.lexeme?.toDouble()?.let { Real(it) }
-//        expect(Symbol.REAL)
-//        return real!!
-//    }
 
     private fun parseAdditive(): Expr {
         var left = parseMultiplicative()

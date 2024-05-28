@@ -2,6 +2,8 @@ import kotlin.math.*
 
 interface ICity {
     val name: Name
+    val block: IBlock
+    val nextCity: ICity
     override fun toString(): String
     fun eval(env: Map<String, Double>): String
 }
@@ -9,6 +11,8 @@ interface ICity {
 interface IBlock {
     val name: Name
     val type: String
+    val command: ICommand
+    val nextBlock: IBlock
     override fun toString(): String
     fun eval(env: Map<String, Double>): String
 }
@@ -26,10 +30,17 @@ interface IExpression {
 
 var IS_COLLECTION = false
 
+val envGlobal: MutableMap<String, Double> = mutableMapOf()
+
 object Nil : IBlock, ICommand, IExpression, ICity {
     override val nextCommand: ICommand = Nil
     override val name: Name = Name("")
+    override val block: IBlock = Nil
+    override val nextCity: ICity = Nil
     override val type: String = ""
+    override val command: ICommand = Nil
+    override val nextBlock: IBlock = Nil
+
     override fun toString(): String {
         return ""
     }
@@ -41,8 +52,8 @@ object Nil : IBlock, ICommand, IExpression, ICity {
 
 class City(
     override val name: Name,
-    val block: IBlock = Nil,
-    val nextCity: ICity = Nil
+    override val block: IBlock = Nil,
+    override val nextCity: ICity = Nil
 ) : ICity {
     override fun toString(): String {
         return """
@@ -69,8 +80,8 @@ $nextCity
 abstract class Block(
     override val type: String,
     override val name: Name,
-    val command: ICommand = Nil,
-    val nextBlock: IBlock = Nil
+    override val command: ICommand = Nil,
+    override val nextBlock: IBlock = Nil
 ) : IBlock {
     override fun toString(): String {
         return """
@@ -150,7 +161,7 @@ $nextCommand
     }
 
     override fun eval(env: Map<String, Double>): String {
-        val bendPoints = getBendPoints(start, end, angle)
+        val bendPoints = getBendPoints(start, end, angle, env)
         // Note: GeoJSON does not support 'Bend', but we can represent it as a LineString with additional properties
         val bendGeoJson = """
             {
@@ -210,14 +221,13 @@ $nextCommand
     }
 
     override fun eval(env: Map<String, Double>): String {
-        // TODO: Implement circle drawing
-        val circlePoints = getCirclePoints(center, radius)
+        val circlePoints = getCirclePoints(center, radius, env)
         val circleGeoJson = """
         {
-            "type": "LineString",
-            "coordinates": [
+            "type": "Polygon",
+            "coordinates": [[
                 ${circlePoints.joinToString(",\n") { it.eval(env) }}
-            ]
+            ]]
         }
         """
         return if (nextCommand is Nil) circleGeoJson.trimIndent() else circleGeoJson.trimIndent() + ",\n" + nextCommand.eval(
@@ -270,24 +280,25 @@ class Define(
     override fun eval(env: Map<String, Double>): String {
         val newEnv = env.toMutableMap()
         newEnv[name] = value.eval(env)
+        envGlobal[name] = value.eval(newEnv)
         return nextCommand.eval(newEnv)
     }
 
 }
 
 class ForLoop(
-    val variable: Variable,
-    val start: Expr,
+    val define: Define,
     val end: Expr,
     val body: ICommand,
     override val nextCommand: ICommand = Nil
 ) : ICommand {
     init {
-        IS_COLLECTION = true;
+        IS_COLLECTION = true
     }
+
     override fun toString(): String {
         return """
-for ($variable = $start, $end) {
+for (${define.name} = ${define.value}, $end) {
     $body
 }
 $nextCommand
@@ -296,19 +307,22 @@ $nextCommand
 
     override fun eval(env: Map<String, Double>): String {
         var commands = ""
-        var i = variable.eval(env)
+        var i = define.value.eval(env).toInt()
         val k = end.eval(env).toInt()
-        if(k - i < 0) {
+        if (k - i < 0) {
             return nextCommand.eval(env)
         }
-        while(i <= k) {
-            val newEnv = env.toMutableMap()
-            newEnv[variable.toString()] = i
+        val newEnv = env.toMutableMap()
+        while (i <= k) {
+            newEnv[define.name] = i.toDouble()
+            envGlobal[define.name] = i.toDouble()
             commands += body.eval(newEnv) + ",\n"
             i++
         }
         commands = commands.substring(0, commands.length - 2)
-        return commands + nextCommand.eval(env)
+        return if (nextCommand is Nil) commands.trimIndent() else commands.trimIndent() + ",\n" + nextCommand.eval(
+            newEnv
+        )
     }
 }
 
@@ -401,7 +415,7 @@ data class Variable(private val name: String) : Expr {
     }
 
     override fun eval(env: Map<String, Double>): Double {
-        return env[name] ?: throw IllegalArgumentException("Variable not found")
+        return env[name] ?: envGlobal[name] ?: throw IllegalArgumentException("Unknown variable")
     }
 }
 
@@ -432,10 +446,10 @@ fun getMultipleGeometryEnd(command: ICommand): String {
         """.trimIndent() else ""
 }
 
-fun getCirclePoints(center: Point, radius: Real): List<Point> {
+fun getCirclePoints(center: Point, radius: Real, env: Map<String, Double>): List<Point> {
     val points = mutableListOf<Point>()
-    val lat = Math.toRadians(center.lat.eval())
-    val lon = Math.toRadians(center.lon.eval())
+    val lat = Math.toRadians(center.lat.eval(env))
+    val lon = Math.toRadians(center.lon.eval(env))
     val c = radius.value / 1000 / 6371.0  // Convert radius from meters to kilometers and calculate c
     for (i in 0..360 step 10) {
         val beta = Math.toRadians(i.toDouble())
@@ -443,20 +457,34 @@ fun getCirclePoints(center: Point, radius: Real): List<Point> {
         val newLon = lon + atan2(sin(beta) * sin(c) * cos(lat), cos(c) - sin(lat) * sin(newLat))
         points.add(Point(Real(Math.toDegrees(newLat)), Real(Math.toDegrees(newLon))))
     }
+    points.add(
+        Point(
+            Real(Math.toDegrees(asin(sin(lat) * cos(c) + cos(lat) * sin(c) * cos(Math.toRadians(0.0))))),
+            Real(
+                Math.toDegrees(
+                    lon + atan2(
+                        sin(Math.toRadians(0.0)) * sin(c) * cos(lat),
+                        cos(c) - sin(lat) * sin(asin(sin(lat) * cos(c) + cos(lat) * sin(c) * cos(Math.toRadians(0.0))))
+                    )
+                )
+            )
+        )
+    )
+
     return points
 }
 
-fun getBendPoints(start: Point, end: Point, angle: Real): List<Point> {
+fun getBendPoints(start: Point, end: Point, angle: Real, env: Map<String, Double>): List<Point> {
     val points = mutableListOf<Point>()
     val angleInRad = Math.toRadians(angle.value)
 
     // Compute the midpoint
-    val midX = (start.lat.eval() + end.lat.eval()) / 2
-    val midY = (start.lon.eval() + end.lon.eval()) / 2
+    val midX = (start.lat.eval(env) + end.lat.eval(env)) / 2
+    val midY = (start.lon.eval(env) + end.lon.eval(env)) / 2
 
     // Distance between start and end
-    val distanceX = end.lat.eval() - start.lat.eval()
-    val distanceY = end.lon.eval() - start.lon.eval()
+    val distanceX = end.lat.eval(env) - start.lat.eval(env)
+    val distanceY = end.lon.eval(env) - start.lon.eval(env)
 
     // Compute the control point using the angle
     val controlPoint = Point(
@@ -471,8 +499,8 @@ fun getBendPoints(start: Point, end: Point, angle: Real): List<Point> {
         val b = 2 * (1 - t) * t
         val c = t * t
 
-        val x = a * start.lat.eval() + b * controlPoint.lat.eval() + c * end.lat.eval()
-        val y = a * start.lon.eval() + b * controlPoint.lon.eval() + c * end.lon.eval()
+        val x = a * start.lat.eval(env) + b * controlPoint.lat.eval(env) + c * end.lat.eval(env)
+        val y = a * start.lon.eval(env) + b * controlPoint.lon.eval(env) + c * end.lon.eval(env)
 
         points.add(Point(Real(x), Real(y)))
     }
