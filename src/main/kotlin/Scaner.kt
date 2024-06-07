@@ -38,13 +38,17 @@ enum class Symbol {
     EQUALS,
     NOT_EQUALS,
     LESS_THAN,
-    MORE_THAN,
+    GREATER_THAN,
     LESS_OR_EQUALS,
-    MORE_OR_EQUALS,
+    GREATER_THAN_OR_EQUALS,
     DEF,
     OPEN_BRACKET,
     CLOSE_BRACKET,
-    NIL
+    NIL,
+    IF,
+    ELSE,
+    AND,
+    OR
 }
 
 const val EOF = -1
@@ -60,7 +64,7 @@ interface DFA {
 }
 
 object Automaton : DFA {
-    override val states = (1..94).toSet()
+    override val states = (1..104).toSet()
     override val alphabet = 0..255
     override val startState = 1
 
@@ -68,7 +72,9 @@ object Automaton : DFA {
         .plus(31..32)
         .plus(33..36)
         .plus(39..77)
-        .plus(79..94).toSet()
+        .plus(79..100)
+        .plus(102)
+        .plus(104).toSet()
 
     private val numberOfStates = states.max() + 1 // plus the task.ERROR_STATE
     private val numberOfCodes = alphabet.max() + 1 // plus the task.EOF
@@ -117,7 +123,7 @@ object Automaton : DFA {
     private val digits = '0'..'9'
     private val chars = ('a'..'z').plus('A'..'Z').toSet()
     private val skip = setOf(' ', '\t', '\n', '\r')
-    private val keywordFirst = setOf('v', 'f', 'p', 'c', 'r', 'b', 's', 'a', 'l', 'd', 'n')
+    private val keywordFirst = setOf('v', 'f', 'p', 'c', 'r', 'b', 's', 'a', 'l', 'd', 'n', 'i', 'e')
 
     private fun setVariable(from: Int, to: Int){
         for(i in from..to) {
@@ -279,8 +285,6 @@ object Automaton : DFA {
         selectedTransition(74, 'l', 75)
         selectedTransition(75, 'e', 76)
 
-
-
         // equals
         setTransition(24, '=', 77)
 
@@ -321,6 +325,33 @@ object Automaton : DFA {
         selectedTransition(40, 'e', 92)
         selectedTransition(92, 'c', 93)
         selectedTransition(93, 't', 94)
+
+        // if
+        setTransition(1, 'i', 95)
+        selectedTransition(95, 'f', 96)
+
+        // else
+        setTransition(1, 'e', 97)
+        selectedTransition(97, 'l', 98)
+        selectedTransition(98, 's', 99)
+        selectedTransition(99, 'e', 100)
+
+        // and
+        setTransition(1, '&', 101)
+        setTransition(101, '&', 102)
+
+        // or
+        setTransition(1, '|', 103)
+        setTransition(103, '|', 104)
+
+        setSymbol(102, Symbol.AND)
+        setSymbol(104, Symbol.OR)
+
+        setVariable(97, 99)
+        setSymbol(100, Symbol.ELSE)
+
+        setVariable(95,95)
+        setSymbol(96, Symbol.IF)
 
         setVariable(2,3)
         setSymbol(4, Symbol.DEFINE)
@@ -383,11 +414,11 @@ object Automaton : DFA {
 
         setSymbol(80, Symbol.LESS_THAN)
 
-        setSymbol(81, Symbol.MORE_THAN)
+        setSymbol(81, Symbol.GREATER_THAN)
 
         setSymbol(82, Symbol.LESS_OR_EQUALS)
 
-        setSymbol(83, Symbol.MORE_OR_EQUALS)
+        setSymbol(83, Symbol.GREATER_THAN_OR_EQUALS)
 
         setVariable(84, 85)
         setSymbol(86, Symbol.DEF)
@@ -487,14 +518,18 @@ fun name(symbol: Symbol) =
         Symbol.EQUALS -> "equals"
         Symbol.NOT_EQUALS -> "not_equals"
         Symbol.LESS_THAN -> "less_than"
-        Symbol.MORE_THAN -> "more_than"
+        Symbol.GREATER_THAN -> "more_than"
         Symbol.LESS_OR_EQUALS -> "less_or_equals"
-        Symbol.MORE_OR_EQUALS -> "more_or_equals"
+        Symbol.GREATER_THAN_OR_EQUALS -> "more_or_equals"
         Symbol.DEF -> "def"
         Symbol.OPEN_BRACKET -> "open_bracket"
         Symbol.CLOSE_BRACKET -> "close_bracket"
         Symbol.NIL -> "nil"
         Symbol.RECT -> "rect"
+        Symbol.IF -> "if"
+        Symbol.ELSE -> "else"
+        Symbol.AND -> "and"
+        Symbol.OR -> "or"
     }
 
 fun printTokens(scanner: Scanner, output: OutputStream) {
@@ -510,6 +545,6 @@ fun printTokens(scanner: Scanner, output: OutputStream) {
 }
 
 fun main() {
-    val scanner = Scanner(Automaton, "var x = 1.0;".byteInputStream())
+    val scanner = Scanner(Automaton, "if (a && b) {} if ( c || d ) {}".byteInputStream())
     printTokens(scanner, System.out)
 }

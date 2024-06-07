@@ -152,6 +152,7 @@ class Parser(private val scanner: Scanner) {
     private fun parseCommand(): ICommand {
         return when (currentToken?.symbol) {
             Symbol.FOR -> parseForLoop()
+            Symbol.IF -> parseIf()
             Symbol.DEFINE -> parseVariableAssigment()
             Symbol.LINE -> parseLine()
             Symbol.CIRCLE -> parseCircle()
@@ -159,6 +160,44 @@ class Parser(private val scanner: Scanner) {
             Symbol.BEND -> parseBend()
             Symbol.RECT -> parseRect()
             else -> throw IllegalArgumentException("Expected command, but got ${currentToken?.symbol}")
+        }
+    }
+
+    private fun parseIf(): ICommand {
+        expect(Symbol.IF)
+        expect(Symbol.LPAREN)
+        val first = parseAdditive()
+        val operation: Symbol?
+        val second: Expr?
+        if(currentToken?.symbol == Symbol.RPAREN) {
+            operation = Symbol.NOT_EQUALS
+            second = Real(0.0)
+        }
+        else {
+            operation = currentToken?.symbol
+                ?: throw IllegalArgumentException("Expected operation, but got null")
+            currentToken = scanner.getToken()
+            second = parseAdditive()
+        }
+        expect(Symbol.RPAREN)
+        expect(Symbol.BEGIN)
+        val thenBlock = parseCommands()
+        expect(Symbol.END)
+        var elseBlock: ICommand = Nil
+        if (currentToken?.symbol == Symbol.ELSE) {
+            currentToken = scanner.getToken()
+            expect(Symbol.BEGIN)
+            elseBlock = parseCommands()
+            expect(Symbol.END)
+        }
+        return when (operation) {
+            Symbol.EQUALS -> If(Equals(first, second), thenBlock, elseBlock)
+            Symbol.NOT_EQUALS -> If(NotEquals(first, second), thenBlock, elseBlock)
+            Symbol.LESS_THAN -> If(LessThan(first, second), thenBlock, elseBlock)
+            Symbol.GREATER_THAN -> If(GreaterThan(first, second), thenBlock, elseBlock)
+            Symbol.LESS_OR_EQUALS -> If(LessThanOrEqual(first, second), thenBlock, elseBlock)
+            Symbol.GREATER_THAN_OR_EQUALS -> If(GreaterThanOrEqual(first, second), thenBlock, elseBlock)
+            else -> throw IllegalArgumentException("Unexpected operation: $operation")
         }
     }
 
@@ -171,6 +210,7 @@ class Parser(private val scanner: Scanner) {
             is Rect -> Rect(first.bottomLeft, first.bottomRight, first.topRight, first.topLeft, second)
             is Define -> Define(first.name, first.value, second)
             is ForLoop -> ForLoop(Define(first.define.name, first.define.value), first.end, first.body, second)
+            is If -> If(first.condition, first.body, first.elseBody, second)
             else -> Nil
         }
     }

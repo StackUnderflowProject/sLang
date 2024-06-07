@@ -118,9 +118,11 @@ class Road(name: Name, command: ICommand, nextBlock: IBlock = Nil) : Block("road
 
 class Building(name: Name, command: ICommand, nextBlock: IBlock = Nil) : Block("building", name, command, nextBlock)
 
-class Stadium(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: UInt = 0u) : Block("stadium", name, command, nextBlock, club, capacity)
+class Stadium(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: UInt = 0u) :
+    Block("stadium", name, command, nextBlock, club, capacity)
 
-class Arena(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: UInt = 0u) : Block("arena", name, command, nextBlock, club, capacity)
+class Arena(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: UInt = 0u) :
+    Block("arena", name, command, nextBlock, club, capacity)
 
 class Line(
     val start: Point,
@@ -319,13 +321,37 @@ $nextCommand
         while (i <= k) {
             newEnv[define.name] = i.toDouble()
             envGlobal[define.name] = i.toDouble()
-            commands += body.eval(newEnv) + ",\n"
+            val body = body.eval(newEnv)
+            commands += body + if (body.length > 1) {
+                ",\n"
+            } else {
+                ""
+            }
             i++
         }
         commands = commands.substring(0, commands.length - 2)
         return if (nextCommand is Nil) commands.trimIndent() else commands.trimIndent() + ",\n" + nextCommand.eval(
             newEnv
         )
+    }
+}
+
+class If(
+    val condition: LogicExpr,
+    val body: ICommand,
+    val elseBody: ICommand = Nil,
+    override val nextCommand: ICommand = Nil
+) : ICommand {
+    override fun toString(): String {
+        return """if ($condition) { $body } else { $elseBody }"""
+    }
+
+    override fun eval(env: Map<String, Double>): String {
+        return if (condition.eval(env)) {
+            body.eval(env)
+        } else {
+            elseBody.eval(env)
+        }
     }
 }
 
@@ -422,11 +448,124 @@ data class Variable(private val name: String) : Expr {
     }
 }
 
+interface LogicExpr {
+    val nextExpr: LogicExpr?
+    fun eval(env: Map<String, Double> = emptyMap()): Boolean
+}
+
+class Equals(
+    private val first: Expr,
+    private val second: Expr,
+    override val nextExpr: LogicExpr? = null
+) : LogicExpr {
+    override fun toString(): String {
+        return "($first == $second)"
+    }
+
+    override fun eval(env: Map<String, Double>): Boolean {
+        var isValid = first.eval(env) == second.eval(env)
+        while(nextExpr != null) {
+            isValid = isValid && nextExpr.eval(env)
+        }
+        return isValid
+    }
+}
+
+class NotEquals(
+    private val first: Expr,
+    private val second: Expr,
+    override val nextExpr: LogicExpr? = null
+) : LogicExpr {
+    override fun toString(): String {
+        return "($first != $second)"
+    }
+
+    override fun eval(env: Map<String, Double>): Boolean {
+        var isValid = first.eval(env) != second.eval(env)
+        while(nextExpr != null) {
+            isValid = isValid && nextExpr.eval(env)
+        }
+        return isValid
+    }
+}
+
+class LessThan(
+    private val first: Expr,
+    private val second: Expr,
+    override val nextExpr: LogicExpr? = null
+) : LogicExpr {
+    override fun toString(): String {
+        return "($first < $second)"
+    }
+
+    override fun eval(env: Map<String, Double>): Boolean {
+        var isValid = first.eval(env) < second.eval(env)
+        while(nextExpr != null) {
+            isValid = isValid && nextExpr.eval(env)
+        }
+        return isValid
+    }
+}
+
+class GreaterThan(
+    private val first: Expr,
+    private val second: Expr,
+    override val nextExpr: LogicExpr? = null
+) : LogicExpr {
+    override fun toString(): String {
+        return "($first > $second)"
+    }
+
+    override fun eval(env: Map<String, Double>): Boolean {
+        var isValid = first.eval(env) > second.eval(env)
+        while(nextExpr != null) {
+            isValid = isValid && nextExpr.eval(env)
+        }
+        return isValid
+    }
+}
+
+class LessThanOrEqual(
+    private val first: Expr,
+    private val second: Expr,
+    override val nextExpr: LogicExpr? = null
+) : LogicExpr {
+    override fun toString(): String {
+        return "($first <= $second)"
+    }
+
+    override fun eval(env: Map<String, Double>): Boolean {
+        var isValid = first.eval(env) <= second.eval(env)
+        while(nextExpr != null) {
+            isValid = isValid && nextExpr.eval(env)
+        }
+        return isValid
+    }
+}
+
+class GreaterThanOrEqual(
+    private val first: Expr,
+    private val second: Expr,
+    override val nextExpr: LogicExpr? = null
+) : LogicExpr {
+    override fun toString(): String {
+        return "($first >= $second)"
+    }
+
+    override fun eval(env: Map<String, Double>): Boolean {
+        var isValid = first.eval(env) >= second.eval(env)
+        while(nextExpr != null) {
+            isValid = isValid && nextExpr.eval(env)
+        }
+        return isValid
+    }
+}
+
 fun isGeometryCollection(command: ICommand): Boolean {
     var geoCommand = 0
     var i = command
     while (i !is Nil) {
-        if (i !is Define) {
+        if (i !is Define && i !is If && i !is ForLoop) {
             geoCommand++
         }
         i = i.nextCommand
