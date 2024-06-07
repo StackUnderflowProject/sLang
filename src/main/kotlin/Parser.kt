@@ -33,7 +33,7 @@ class Parser(private val scanner: Scanner) {
     }
 
     private fun parseBlocks(): IBlock {
-        if(currentToken?.symbol == Symbol.END) {
+        if (currentToken?.symbol == Symbol.END) {
             return Nil
         }
         val block = parseBlock()
@@ -59,8 +59,22 @@ class Parser(private val scanner: Scanner) {
         return when (first) {
             is Road -> Road(first.name, first.command, second)
             is Building -> Building(first.name, first.command, second)
-            is Stadium -> Stadium(first.name, first.command, second)
-            is Arena -> Arena(first.name, first.command, second)
+            is Stadium -> Stadium(
+                first.name,
+                first.command,
+                club = first.club,
+                capacity = first.capacity,
+                nextBlock = second
+            )
+
+            is Arena -> Arena(
+                first.name,
+                first.command,
+                club = first.club,
+                capacity = first.capacity,
+                nextBlock = second
+            )
+
             else -> Nil
         }
     }
@@ -87,22 +101,42 @@ class Parser(private val scanner: Scanner) {
 
     private fun parseStadium(): Stadium {
         expect(Symbol.STADIUM)
-        val name = parseName()
+        val metadata = parseMetadata()
         expect(Symbol.BEGIN)
         val command = parseCommands()
         expect(Symbol.END)
         expect(Symbol.TERM)
-        return Stadium(name, command)
+        return Stadium(metadata.name, command, club = metadata.club, capacity = metadata.capacity)
+    }
+
+    data class Metadata(val name: Name, var club: Name, var capacity: UInt)
+
+    private fun parseMetadata(): Metadata {
+        val metadata = Metadata(parseName(), Name(""), 0u)
+        if (currentToken?.symbol == Symbol.NAME) {
+            metadata.club = parseName()
+        }
+        if (currentToken?.symbol == Symbol.REAL) {
+            metadata.capacity = parseCapacity()
+        }
+        return metadata
+    }
+
+    private fun parseCapacity(): UInt {
+        val capacity = currentToken?.lexeme?.toUIntOrNull()
+            ?: throw IllegalArgumentException("Invalid capacity: ${currentToken?.lexeme}")
+        expect(Symbol.REAL)
+        return capacity
     }
 
     private fun parseArena(): Arena {
         expect(Symbol.ARENA)
-        val name = parseName()
+        val metadata = parseMetadata()
         expect(Symbol.BEGIN)
         val command = parseCommands()
         expect(Symbol.END)
         expect(Symbol.TERM)
-        return Arena(name, command)
+        return Arena(metadata.name, command, club = metadata.club, capacity = metadata.capacity)
     }
 
     private fun parseCommands(): ICommand {
@@ -111,7 +145,7 @@ class Parser(private val scanner: Scanner) {
             command
         } else {
             val nextCommand = parseCommands()
-            combineCommands(if(command.nextCommand is Nil) command else command.nextCommand, nextCommand)
+            combineCommands(if (command.nextCommand is Nil) command else command.nextCommand, nextCommand)
         }
     }
 
@@ -295,10 +329,12 @@ class Parser(private val scanner: Scanner) {
                 currentToken = scanner.getToken() // Consume the PLUS token
                 UnaryPlus(parsePrimary())
             }
+
             Symbol.MINUS -> {
                 currentToken = scanner.getToken() // Consume the MINUS token
                 UnaryMinus(parsePrimary())
             }
+
             else -> parsePrimary()
         }
     }
@@ -311,23 +347,24 @@ class Parser(private val scanner: Scanner) {
                 currentToken = scanner.getToken() // Consume the REAL token
                 Real(value)
             }
+
             Symbol.VARIABLE -> {
                 val name = currentToken!!.lexeme
                 currentToken = scanner.getToken() // Consume the VARIABLE token
                 Variable(name)
             }
+
             Symbol.LPAREN -> {
                 currentToken = scanner.getToken() // Consume the LPAREN token
                 val expr = parseAdditive()
                 expect(Symbol.RPAREN) // Expect RPAREN to close the expression
                 expr
             }
+
             else -> throw IllegalArgumentException("Unexpected token: ${currentToken?.symbol}")
         }
     }
 }
-
-
 
 
 fun main() {

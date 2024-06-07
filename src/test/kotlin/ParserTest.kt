@@ -99,4 +99,31 @@ class ParserTest {
         val city = parser.parse()
         assertDoesNotThrow { city.eval(emptyMap()) }
     }
+
+    @Test
+    fun `parse handles properties in stadium`() {
+        val input = """
+            city "Test" {
+                stadium "Ljudski vrt" "Maribor" 5000 {
+                    circle((46.562638, 15.640575), 100)
+                };
+            }
+        """.trimIndent()
+        val parser = Parser(Scanner(Automaton, input.byteInputStream()))
+        val city = parser.parse()
+        assertDoesNotThrow { city.eval(emptyMap()) }
+    }
+
+    fun `parse handles properties in arena`() {
+        val input = """
+            city "Test" {
+                arena "Tabor" "Maribor" 400 {
+                    circle((46.562638, 15.640575), 100)
+                };
+            }
+        """.trimIndent()
+        val parser = Parser(Scanner(Automaton, input.byteInputStream()))
+        val city = parser.parse()
+        assertDoesNotThrow { city.eval(emptyMap()) }
+    }
 }
