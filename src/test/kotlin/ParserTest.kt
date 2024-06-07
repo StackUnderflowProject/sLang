@@ -114,6 +114,7 @@ class ParserTest {
         assertDoesNotThrow { city.eval(emptyMap()) }
     }
 
+    @Test
     fun `parse handles properties in arena`() {
         val input = """
             city "Test" {
@@ -122,6 +123,59 @@ class ParserTest {
                 };
             }
         """.trimIndent()
+        val parser = Parser(Scanner(Automaton, input.byteInputStream()))
+        val city = parser.parse()
+        assertDoesNotThrow { city.eval(emptyMap()) }
+    }
+
+    @Test
+    fun `parse handles properties in arena 2`() {
+        val input = """
+            city "Test" {
+                arena "Tabor" 400 {
+                    circle((46.562638, 15.640575), 100)
+                };
+            }
+        """.trimIndent()
+        val parser = Parser(Scanner(Automaton, input.byteInputStream()))
+        val city = parser.parse()
+        assertDoesNotThrow { city.eval(emptyMap()) }
+    }
+
+    @Test
+    fun `parse handles conditionals`() {
+        val input = """
+            city "Test" {
+                stadium "Ljudski vrt" {
+                    var x = 1;
+                    if(x == 1) {
+                        box((0, 0), (1, 1))
+                    }
+                };
+            }
+        """.trimIndent()
+
+        val parser = Parser(Scanner(Automaton, input.byteInputStream()))
+        val city = parser.parse()
+        assertDoesNotThrow { city.eval(emptyMap()) }
+    }
+
+    @Test
+    fun `parse handles conditionals else`(){
+        val input = """
+            city "Test" {
+                stadium "Ljudski vrt" {
+                    if(0) {
+                        box((0, 0), (1, 1))
+                    } else {
+                        for(var i = 1, 2) {
+                            line((i, i), (i+1, i-1))
+                        }
+                    }
+                };
+            }
+        """.trimIndent()
+
         val parser = Parser(Scanner(Automaton, input.byteInputStream()))
         val city = parser.parse()
         assertDoesNotThrow { city.eval(emptyMap()) }

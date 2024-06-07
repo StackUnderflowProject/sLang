@@ -1,5 +1,11 @@
 city "Test" {
-    arena "Tabor" "Maribor" 5000 {
-        circle((46.55025, 15.05417), 10)
+    stadium "Ljudski vrt" {
+        if(0) {
+            box((0, 0), (1, 1))
+        } else {
+            for(var i = 1, 2) {
+                line((i, i), (i+1, i-1))
+            }
+        }
     };
 }
