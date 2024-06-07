@@ -81,7 +81,9 @@ abstract class Block(
     override val type: String,
     override val name: Name,
     override val command: ICommand = Nil,
-    override val nextBlock: IBlock = Nil
+    override val nextBlock: IBlock = Nil,
+    val club: Name = Name(""),
+    val capacity: UInt = 0u,
 ) : IBlock {
     override fun toString(): String {
         return """
@@ -93,12 +95,13 @@ $nextBlock
     }
 
     override fun eval(env: Map<String, Double>): String {
-
         val blockGeoJson = """
         {
             "type": "Feature",
             "properties": {
                 "name": "$name"
+                ${if (club.toString().isNotEmpty()) ", \n\"club\": \"$club\"" else ""}
+                ${if (capacity != 0u) ", \n\"capacity\": $capacity" else ""}
             },
             "geometry": ${getMultipleGeometryStart(command)}      
                 ${command.eval(env)}
@@ -115,9 +118,9 @@ class Road(name: Name, command: ICommand, nextBlock: IBlock = Nil) : Block("road
 
 class Building(name: Name, command: ICommand, nextBlock: IBlock = Nil) : Block("building", name, command, nextBlock)
 
-class Stadium(name: Name, command: ICommand, nextBlock: IBlock = Nil) : Block("stadium", name, command, nextBlock)
+class Stadium(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: UInt = 0u) : Block("stadium", name, command, nextBlock, club, capacity)
 
-class Arena(name: Name, command: ICommand, nextBlock: IBlock = Nil) : Block("arena", name, command, nextBlock)
+class Arena(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: UInt = 0u) : Block("arena", name, command, nextBlock, club, capacity)
 
 class Line(
     val start: Point,

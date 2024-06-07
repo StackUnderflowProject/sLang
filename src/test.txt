@@ -1,11 +1,5 @@
 city "Test" {
-    building "Test" {
-        var z = 0;
-        for(var y = z, 2) {
-            for(var x = 0, y) {
-                box((x, y), (x + 1, y + 1))
-            }
-        }
-        circle((x-2, y-2), 100000)
+    arena "Tabor" "Maribor" 5000 {
+        circle((46.55025, 15.05417), 10)
     };
 }
