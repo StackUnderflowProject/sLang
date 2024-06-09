@@ -1,11 +1,7 @@
-city "Test" {
-    stadium "Ljudski vrt" {
-        if(0) {
-            box((0, 0), (1, 1))
-        } else {
-            for(var i = 1, 2) {
-                line((i, i), (i+1, i-1))
-            }
+city "Maribor" {
+    road "Gosposvetska cesta" {
+        for(var i = 0, 3) {
+            bend((46.56107, 15.6385), (46.56112, 15.64234), 30 * i)
         }
-    };
+    }
 }
