@@ -1,20 +1,67 @@
-Mandatory features:
 FIRST(CITY) = { city }
-FIRST(BLOCKS) = FIRST(BLOCK) U { ε } = { road, building, stadium, arena }
-FIRST(BLOCK) = FIRST(NAMED_BLOCK) = { road, building, stadium, arena }
-FIRST(NAMED_BLOCK) = { road, building, stadium, arena }
-FIRST(COMMANDS) = FIRST(FIRST(COMMAND) . FIRST(COMMANDS)) U { ε } = { line, bend, box, circle, ε }
-FIRST(COMMAND) = { line, bend, box, circle }
+FIRST(BLOCKS) = { arena, building, road, stadium }
+FIRST(BLOCKS_TAIL) = { arena, building, road, stadium, ε }
+FIRST(BLOCK) = { arena, building, road, stadium }
+FIRST(ARENA) = { arena }
+FIRST(BUILDING) = { building }
+FIRST(ROAD) = { road }
+FIRST(STADIUM) = { stadium }
+FIRST(METADATA) = { NAME, REAL, ε }
+FIRST(TITLE) = { NAME, ε }
+FIRST(CAPACITY) = { +, -, REAL, ε }
+FIRST(COMMANDS) = { bend, box, circle, for, if, line, rect, var }
+FIRST(COMMANDS_TAIL) = { bend, box, circle, for, if, line, rect, var, ε }
+FIRST(COMMAND) = { bend, box, circle, for, if, line, rect, var }
 FIRST(POINT) = { ( }
-
-Additional features:
 FIRST(FOR) = { for }
-FIRST(STATEMENTS) = FIRST(FIRST(STATEMENT) . FIRST(STATEMENTS)) U { ε } = { for, var, if, variable, ε }
-FIRST(STATEMENT) = FIRST(ASSIGMENT) U FIRST(FOR) U FIRST(IF) U FIRST(CALL) = { for, var, if, variable }
-FIRST(ASSIGMENT) = { var }
 FIRST(IF) = { if }
-FIRST(CALL) = { variable }
-FIRST(CONDITION) = FIRST(EXPRESSION) =
-FIRST(EXPRESSION) = { real, variable } U FIRST(LIST) U FIRST(CALL) U FIRST(OPERATION) =
-FIRST(LIST) = { [ }
-FIRST(OPERATION) = FIRST(EXPRESSION) = { real, variable }
+FIRST(ELSE) = { else }
+FIRST(CONDITION) = { (, +, -, VARIABLE, REAL }
+FIRST(CONDITION_TAIL) = { !=, <, ==, >, ε }
+FIRST(COMP_OP) = { !=, <, ==, > }
+FIRST(LESS_THAN) = { < }
+FIRST(GREATER_THAN) = { > }
+FIRST(EQUALS) = { =, ε }
+FIRST(ASSIGMENT) = { var }
+FIRST(ADDITIVE) = { (, +, -, VARIABLE, REAL }
+FIRST(ADDITIVE_TAIL) = { +, -, ε }
+FIRST(MULTIPLICATIVE) = { (, +, -, VARIABLE, REAL }
+FIRST(MULTIPLICATIVE_TAIL) = { *, /, //, ε }
+FIRST(EXPONENTIAL) = { (, +, -, VARIABLE, REAL }
+FIRST(EXPONENTIAL_TAIL) = { ^, ε }
+FIRST(UNARY) = { (, +, -, VARIABLE, REAL }
+FIRST(PRIMARY) = { (, VARIABLE, REAL }
+
+FOLLOW(CITY) = { EOF }
+FOLLOW(BLOCKS) = { } }
+FOLLOW(BLOCKS_TAIL) = { } }
+FOLLOW(BLOCK) = { arena, building, road, stadium, } }
+FOLLOW(ARENA) = { arena, building, road, stadium, } }
+FOLLOW(BUILDING) = { arena, building, road, stadium, } }
+FOLLOW(ROAD) = { arena, building, road, stadium, } }
+FOLLOW(STADIUM) = { arena, building, road, stadium, } }
+FOLLOW(METADATA) = { { }
+FOLLOW(TITLE) = { REAL, } }
+FOLLOW(CAPACITY) = { } }
+FOLLOW(COMMANDS) = { } }
+FOLLOW(COMMANDS_TAIL) = { } }
+FOLLOW(COMMAND) = { bend, box, circle, for, if, line, rect, var, ε }
+FOLLOW(POINT) = { ), , }
+FOLLOW(FOR) = { bend, box, circle, for, if, line, rect, var, } }
+FOLLOW(IF) = { bend, box, circle, for, if, line, rect, var, } }
+FOLLOW(ELSE) = { bend, box, circle, for, if, line, rect, var, } }
+FOLLOW(CONDITION) = { ) }
+FOLLOW(CONDITION_TAIL) = { ) }
+FOLLOW(COMP_OP) = { REAL }
+FOLLOW(LESS_THAN) = { REAL }
+FOLLOW(GREATER_THAN) = { REAL }
+FOLLOW(EQUALS) = { REAL }
+FOLLOW(ASSIGMENT) = { bend, box, circle, for, if, line, rect, var, } }
+FOLLOW(ADDITIVE) = { bend, box, circle, for, if, line, rect, var, }, !=, <, ==, > }
+FOLLOW(ADDITIVE_TAIL) = { bend, box, circle, for, if, line, rect, var, }, !=, <, ==, > }
+FOLLOW(MULTIPLICATIVE) = { +, -, bend, box, circle, for, if, line, rect, var, }, !=, <, ==, > }
+FOLLOW(MULTIPLICATIVE_TAIL) = { +, -, bend, box, circle, for, if, line, rect, var, }, !=, <, ==, > }
+FOLLOW(EXPONENTIAL) = { +, -, *, /, //, bend, box, circle, for, if, line, rect, var, }, !=, <, ==, > }
+FOLLOW(EXPONENTIAL_TAIL) = { +, -, *, /, //, bend, box, circle, for, if, line, rect, var, }, !=, <, ==, > }
+FOLLOW(UNARY) = { +, -, *, /, //, ^, bend, box, circle, for, if, line, rect, var, }, !=, <, ==, > }
+FOLLOW(PRIMARY) = { +, -, *, /, //, ^, bend, box, circle, for, if, line, rect, var, }, !=, <, ==, >, = }

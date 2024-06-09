@@ -83,7 +83,7 @@ abstract class Block(
     override val command: ICommand = Nil,
     override val nextBlock: IBlock = Nil,
     val club: Name = Name(""),
-    val capacity: UInt = 0u,
+    var capacity: Expr = Real(0.0),
 ) : IBlock {
     override fun toString(): String {
         return """
@@ -101,7 +101,7 @@ $nextBlock
             "properties": {
                 "name": "$name"
                 ${if (club.toString().isNotEmpty()) ", \n\"club\": \"$club\"" else ""}
-                ${if (capacity != 0u) ", \n\"capacity\": $capacity" else ""}
+                ${if (capacity.eval(env) != 0.0) ", \n\"capacity\": ${capacity.eval(env).toInt()}" else ""}
             },
             "geometry": ${getMultipleGeometryStart(command)}      
                 ${command.eval(env)}
@@ -118,10 +118,10 @@ class Road(name: Name, command: ICommand, nextBlock: IBlock = Nil) : Block("road
 
 class Building(name: Name, command: ICommand, nextBlock: IBlock = Nil) : Block("building", name, command, nextBlock)
 
-class Stadium(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: UInt = 0u) :
+class Stadium(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: Expr = Real(0.0)) :
     Block("stadium", name, command, nextBlock, club, capacity)
 
-class Arena(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: UInt = 0u) :
+class Arena(name: Name, command: ICommand, nextBlock: IBlock = Nil, club: Name = Name(""), capacity: Expr = Real(0.0)) :
     Block("arena", name, command, nextBlock, club, capacity)
 
 class Line(
@@ -155,7 +155,7 @@ $nextCommand
 class Bend(
     val start: Point,
     val end: Point,
-    val angle: Real,
+    val angle: Expr,
     override val nextCommand: ICommand = Nil
 ) : ICommand {
     override fun toString(): String {
@@ -616,9 +616,9 @@ fun getCirclePoints(center: Point, radius: Real, env: Map<String, Double>): List
     return points
 }
 
-fun getBendPoints(start: Point, end: Point, angle: Real, env: Map<String, Double>): List<Point> {
+fun getBendPoints(start: Point, end: Point, angle: Expr, env: Map<String, Double>): List<Point> {
     val points = mutableListOf<Point>()
-    val angleInRad = Math.toRadians(angle.value)
+    val angleInRad = Math.toRadians(angle.eval(env))
 
     // Compute the midpoint
     val midX = (start.lat.eval(env) + end.lat.eval(env)) / 2

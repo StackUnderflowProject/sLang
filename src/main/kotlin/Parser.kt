@@ -85,7 +85,6 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.BEGIN)
         val command = parseCommands()
         expect(Symbol.END)
-        expect(Symbol.TERM)
         return Road(name, command)
     }
 
@@ -95,7 +94,6 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.BEGIN)
         val command = parseCommands()
         expect(Symbol.END)
-        expect(Symbol.TERM)
         return Building(name, command)
     }
 
@@ -105,28 +103,20 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.BEGIN)
         val command = parseCommands()
         expect(Symbol.END)
-        expect(Symbol.TERM)
         return Stadium(metadata.name, command, club = metadata.club, capacity = metadata.capacity)
     }
 
-    data class Metadata(val name: Name, var club: Name, var capacity: UInt)
+    data class Metadata(val name: Name, var club: Name = Name(""), var capacity: Expr = Real(0.0))
 
     private fun parseMetadata(): Metadata {
-        val metadata = Metadata(parseName(), Name(""), 0u)
+        val metadata = Metadata(parseName())
         if (currentToken?.symbol == Symbol.NAME) {
             metadata.club = parseName()
         }
         if (currentToken?.symbol == Symbol.REAL) {
-            metadata.capacity = parseCapacity()
+            metadata.capacity = parseAdditive()
         }
         return metadata
-    }
-
-    private fun parseCapacity(): UInt {
-        val capacity = currentToken?.lexeme?.toUIntOrNull()
-            ?: throw IllegalArgumentException("Invalid capacity: ${currentToken?.lexeme}")
-        expect(Symbol.REAL)
-        return capacity
     }
 
     private fun parseArena(): Arena {
@@ -135,7 +125,6 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.BEGIN)
         val command = parseCommands()
         expect(Symbol.END)
-        expect(Symbol.TERM)
         return Arena(metadata.name, command, club = metadata.club, capacity = metadata.capacity)
     }
 
@@ -236,7 +225,6 @@ class Parser(private val scanner: Scanner) {
         val variable = parseVariable()
         expect(Symbol.ASSIGN)
         val expression = parseAdditive()
-        expect(Symbol.TERM)
         return Define(variable, expression)
     }
 
@@ -286,7 +274,7 @@ class Parser(private val scanner: Scanner) {
         expect(Symbol.TO)
         val angle = parseAdditive()
         expect(Symbol.RPAREN)
-        return Bend(from, to, angle as Real)
+        return Bend(from, to, angle)
     }
 
     private fun parseRect(): ICommand {
